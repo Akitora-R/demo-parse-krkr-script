@@ -3,6 +3,7 @@ package me.aki.demo;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -46,13 +47,15 @@ public class TextBlock {
             %s
             [endif]
             """;
-    private static final List<String> langList = List.of("ext", "en", "cns", "cnt", "ken", "jp");
 
-    public List<String> toText() {
+
+    public List<String> generateContent() {
         Map<String, String> m = this.getText().stream().collect(Collectors.toMap(TextContent::getLang, TextContent::getOrig, (a, b) -> b));
-        Object[] ts = new Object[langList.size()];
+        Object[] ts = new Object[Constants.LANG_LIST.size()];
         for (int i = 0; i < ts.length; i++) {
-            ts[i] = Constants.INDENT.concat(m.getOrDefault(langList.get(i), ""));
+            ts[i] = Arrays.stream(m.getOrDefault(Constants.LANG_LIST.get(i), "").split(Constants.NEW_LINE))
+                    .map(Constants.INDENT::concat)
+                    .collect(Collectors.joining(Constants.NEW_LINE));
         }
         Stream<String> lines = String.format(template, ts).lines();
         if (this.getIndent() > 0) {
