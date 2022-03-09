@@ -13,9 +13,13 @@ public class Writer {
 
     public static void main(String[] args) throws IOException {
         List<String> allLines = Files.readAllLines(Paths.get(Constants.FILE_PATH));
-        System.out.println(allLines.size());
-        List<TextBlock> textBlocks = objectMapper.readValue(Files.newInputStream(Paths.get(Constants.OUT_PATH)), new TypeReference<List<TextBlock>>() {
+
+        List<TextBlock> textBlocks = objectMapper.readValue(Files.newInputStream(Paths.get(Constants.OUT_PATH)), new TypeReference<>() {
         });
-        System.out.println(textBlocks.size());
+        for (TextBlock textBlock : textBlocks) {
+            int lineDiff = textBlock.getLineStop() - textBlock.getLineStart();
+            System.out.println(allLines.get(textBlock.getLineStart() - 1));
+            System.out.println(allLines.get(textBlock.getLineStop() - 1));
+        }
     }
 }
