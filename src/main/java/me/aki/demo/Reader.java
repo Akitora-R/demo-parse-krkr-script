@@ -1,26 +1,26 @@
 package me.aki.demo;
 
 import cn.hutool.core.util.StrUtil;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import me.aki.demo.constant.Constants;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class Parser {
+public class Reader {
     private static final Pattern BLOCK_START = Pattern.compile("\\[if exp=\"sf\\.language\\s*==\\s*'(?<lang>\\w+)'\"]");
     private static final Pattern LANG_SWITCH = Pattern.compile("if exp=\"sf\\.language\\s*==\\s*'(?<lang>\\w+)'\"");
+    private static final Pattern IF_STATE = Pattern.compile("\\[if exp=");
     private static final Pattern DEF_BRANCH = Pattern.compile("\\[else]");
     private static final Pattern END_BRANCH = Pattern.compile("\\[endif]");
     private static final String DEFAULT_LANG = "jp";
-    private static final ObjectMapper objectMapper = new ObjectMapper();
 
-    public static boolean anyMatch(String s, Pattern... patterns) {
+    private boolean anyMatch(String s, Pattern... patterns) {
         for (Pattern pattern : patterns) {
             if (pattern.matcher(s).find()) {
                 return true;
@@ -29,9 +29,9 @@ public class Parser {
         return false;
     }
 
-    public static void main(String[] args) throws IOException {
+    public List<TextBlock> read(Path filePath) throws IOException {
         ArrayList<TextBlock> textBlocks = new ArrayList<>();
-        List<String> allLines = Files.readAllLines(Paths.get(Constants.FILE_PATH));
+        List<String> allLines = Files.readAllLines(filePath);
         for (int i = 0; i < allLines.size(); i++) {
             String line = allLines.get(i);
             if (BLOCK_START.matcher(line).find()) {
@@ -61,7 +61,9 @@ public class Parser {
                         ArrayList<String> lines = new ArrayList<>();
                         for (int k = j + 1; ; k++) {
                             line = allLines.get(k);
-                            if (anyMatch(line, LANG_SWITCH, DEF_BRANCH, END_BRANCH)) {
+                            // FIXME 临时修复，假定其内嵌if不会换行
+                            // eg. charaA.ks line:22877
+                            if (anyMatch(line, LANG_SWITCH, DEF_BRANCH) || "[endif]".equals(StrUtil.trim(line))) {
                                 j = k - 1;
                                 break;
                             }
@@ -73,9 +75,9 @@ public class Parser {
                                 // 块缩进 == 文本缩进-1
                                 textBlock.setIndent(StrUtil.count(line, Constants.INDENT) - 1);
                             }
-                            lines.add(StrUtil.removeAll(line, "\t"));
+                            lines.add(StrUtil.removeAll(line, Constants.INDENT));
                         }
-                        String text = String.join("\n", lines);
+                        String text = String.join(Constants.NEW_LINE, lines);
                         textContent.setOrig(text);
                         textContents.add(textContent);
                     }
@@ -85,7 +87,7 @@ public class Parser {
                 System.out.println("----");
             }
         }
-        String json = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(textBlocks);
-        Files.writeString(Paths.get(Constants.OUT_PATH), json);
+        return textBlocks;
     }
+
 }

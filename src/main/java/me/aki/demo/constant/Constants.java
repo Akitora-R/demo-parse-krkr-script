@@ -1,4 +1,4 @@
-package me.aki.demo;
+package me.aki.demo.constant;
 
 import java.util.List;
 
