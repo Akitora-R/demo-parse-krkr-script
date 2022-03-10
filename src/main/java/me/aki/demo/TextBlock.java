@@ -50,7 +50,7 @@ public class TextBlock {
             """;
 
     public List<String> generateContent() {
-        Map<String, String> m = this.getText().stream().collect(Collectors.toMap(TextContent::getLang, TextContent::getTranslated, (a, b) -> b));
+        Map<String, String> m = this.getText().stream().collect(Collectors.toMap(TextContent::getLang, TextContent::getOrig, (a, b) -> b));
         Object[] ts = new Object[Constants.LANG_LIST.size()];
         for (int i = 0; i < ts.length; i++) {
             ts[i] = Arrays.stream(m.getOrDefault(Constants.LANG_LIST.get(i), "").split(Constants.NEW_LINE))
