@@ -1,56 +1,30 @@
 package me.aki.demo;
 
-import lombok.SneakyThrows;
-import me.aki.demo.constant.Constants;
-import me.aki.demo.util.TranslateUtil;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutionException;
 
 public class Main {
-    public static void main(String[] args) throws IOException, ExecutionException, InterruptedException {
-        Path origFilePath = Path.of(Constants.FILE_PATH);
-        List<TextBlock> textBlocks = new Reader().read(origFilePath);
-        CopyOnWriteArrayList<TextBlock> failed = new CopyOnWriteArrayList<>();
-        ExecutorService executor = Executors.newFixedThreadPool(100);
-        CompletableFuture[] cfs = textBlocks.stream().map(tb -> CompletableFuture.runAsync(() -> {
-            translate(tb);
-            System.out.printf("line %d - %d 完成\n", tb.getLineStart(), tb.getLineStop());
-        }, executor).exceptionally(e -> {
-            System.err.printf("line %d - %d 失败\n", tb.getLineStart(), tb.getLineStop());
-            failed.add(tb);
-            return null;
-        })).toArray(i -> new CompletableFuture[i]);
-        CompletableFuture.allOf(cfs).get();
-        String out = new Writer().write(textBlocks, origFilePath);
-        Files.writeString(Path.of("out.ks"), out);
-        System.err.println("失败数量: " + failed.size());
-    }
+    public static void main(String[] args) {
 
-    @SneakyThrows
-    private static void translate(TextBlock block) {
-        TextContent jpText = getJpText(block.getText());
-        if (jpText != null) {
-            String translated = TranslateUtil.translateToZh(jpText.getOrig());
-            getChsText(block.getText()).setOrig(translated);
+        Options options = new Options();
+        options.addOption("i", "input", true, "输入路径")
+                .addOption("o", "output", true, "输出路径")
+                .addOption("d", "data", true, "json路径")
+                .addOption("r", "read", false, "输出json")
+                .addOption("w", "write", false, "从文件读取json，合并输入文件到输出")
+                .addOption("m", "", false, "")
+                .addOption("dry", "dry", false, "使用假数据替代");
+        try {
+            CommandLine cmd = new DefaultParser().parse(options, args);
+            App app = new App();
+            app.readTranslateAndWrite(cmd.getOptionValue("i"), cmd.getOptionValue("o"), cmd.hasOption("dry"));
+        } catch (IOException | ExecutionException | InterruptedException | ParseException e) {
+            System.out.println();
         }
-    }
-
-    private static TextContent getJpText(List<TextContent> textContents) {
-        return textContents.stream().filter(c -> "jp".equals(c.getLang())).findAny().orElse(null);
-    }
-
-    private static TextContent getChsText(List<TextContent> textContents) {
-        return textContents.stream().filter(c -> "cns".equals(c.getLang())).findAny().orElseGet(() -> {
-            TextContent textContent = new TextContent();
-            textContent.setLang("cns");
-            textContent.setOrig("");
-            textContents.add(textContent);
-            return textContent;
-        });
     }
 }
