@@ -1,5 +1,6 @@
 package me.aki.demo;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.SneakyThrows;
 import me.aki.demo.util.TranslateUtil;
@@ -7,14 +8,23 @@ import me.aki.demo.util.TranslateUtil;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.*;
 
 public class App {
-    public void readToJson(String inputPath) throws IOException {
+    public void readToJson(String inputPath, String outputPath) throws IOException {
         List<TextBlock> textBlocks = new Reader().read(Path.of(inputPath));
-        new ObjectMapper();
+        ObjectMapper objectMapper = new ObjectMapper();
+        Files.writeString(Path.of(outputPath),objectMapper.writeValueAsString(textBlocks));
+    }
+
+    public void writeFromJson(String jsonPath,String inputPath, String outputPath) throws IOException {
+        List<TextBlock> textBlocks = new ObjectMapper().readValue(Files.newInputStream(Path.of(jsonPath)), new TypeReference<List<TextBlock>>() {
+        });
+        String out = new Writer().write(textBlocks, Path.of(inputPath));
+        Files.writeString(Path.of(outputPath),out);
     }
 
     public void readTranslateAndWrite(String inputPath, String outputPath, boolean dryRun) throws IOException, ExecutionException, InterruptedException {
