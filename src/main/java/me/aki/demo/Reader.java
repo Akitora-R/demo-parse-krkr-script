@@ -56,7 +56,7 @@ public class Reader {
                     if (lang != null) {
                         TextContent textContent = new TextContent();
                         textContent.setLang(lang);
-                        System.out.println(lang);
+//                        System.out.println(lang);
                         ArrayList<String> lines = new ArrayList<>();
                         for (int k = j + 1; ; k++) {
                             line = allLines.get(k);
@@ -66,7 +66,7 @@ public class Reader {
                                 j = k - 1;
                                 break;
                             }
-                            System.out.println(line);
+//                            System.out.println(line);
                             if (line.contains(Constants.COMMENT)) {
                                 continue;
                             }
@@ -83,7 +83,7 @@ public class Reader {
                 }
                 // 为了包含最后的一个[endif]，额外+1
                 textBlock.setLineStop(i + 2);
-                System.out.println("----");
+//                System.out.println("----");
             }
         }
         return textBlocks;

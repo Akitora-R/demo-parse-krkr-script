@@ -1,5 +1,6 @@
 package me.aki.demo;
 
+import cn.hutool.core.util.StrUtil;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.SneakyThrows;
@@ -8,23 +9,43 @@ import me.aki.demo.util.TranslateUtil;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.*;
 
 public class App {
+    private final ObjectMapper objectMapper;
+
+    public App(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
+
     public void readToJson(String inputPath, String outputPath) throws IOException {
         List<TextBlock> textBlocks = new Reader().read(Path.of(inputPath));
         ObjectMapper objectMapper = new ObjectMapper();
-        Files.writeString(Path.of(outputPath),objectMapper.writeValueAsString(textBlocks));
+        if (StrUtil.isBlank(outputPath) || !outputPath.endsWith(".json")) {
+            outputPath = "out.json";
+        }
+        Path p = Path.of(outputPath);
+        Files.writeString(p, objectMapper.writeValueAsString(textBlocks));
+        System.out.println(objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(Map.of(
+                "output", p.toAbsolutePath().toString()
+        )));
     }
 
-    public void writeFromJson(String jsonPath,String inputPath, String outputPath) throws IOException {
-        List<TextBlock> textBlocks = new ObjectMapper().readValue(Files.newInputStream(Path.of(jsonPath)), new TypeReference<List<TextBlock>>() {
+    public void writeFromJson(String jsonPath, String inputPath, String outputPath) throws IOException {
+        List<TextBlock> textBlocks = new ObjectMapper().readValue(Files.newInputStream(Path.of(jsonPath)), new TypeReference<>() {
         });
+        if (StrUtil.isBlank(outputPath) || !outputPath.endsWith(".json")) {
+            outputPath = "out.ks";
+        }
         String out = new Writer().write(textBlocks, Path.of(inputPath));
-        Files.writeString(Path.of(outputPath),out);
+        Path p = Path.of(outputPath);
+        Files.writeString(p, out);
+        System.out.println(objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(Map.of(
+                "output", p.toAbsolutePath().toString()
+        )));
     }
 
     public void readTranslateAndWrite(String inputPath, String outputPath, boolean dryRun) throws IOException, ExecutionException, InterruptedException {
@@ -32,18 +53,23 @@ public class App {
         List<TextBlock> textBlocks = new Reader().read(origFilePath);
         CopyOnWriteArrayList<TextBlock> failed = new CopyOnWriteArrayList<>();
         ExecutorService executor = Executors.newFixedThreadPool(100);
+        //noinspection rawtypes,Convert2MethodRef
         CompletableFuture[] cfs = textBlocks.stream().map(tb -> CompletableFuture.runAsync(() -> {
             translate(tb, dryRun);
-            System.out.printf("line %d - %d 完成\n", tb.getLineStart(), tb.getLineStop());
+//            System.out.printf("line %d - %d 完成\n", tb.getLineStart(), tb.getLineStop());
         }, executor).exceptionally(e -> {
-            System.err.printf("line %d - %d 失败\n", tb.getLineStart(), tb.getLineStop());
+//            System.err.printf("line %d - %d 失败\n", tb.getLineStart(), tb.getLineStop());
             failed.add(tb);
             return null;
         })).toArray(i -> new CompletableFuture[i]);
         CompletableFuture.allOf(cfs).get();
         String out = new Writer().write(textBlocks, origFilePath);
-        Files.writeString(Path.of(outputPath), out);
-        System.err.println("失败数量: " + failed.size());
+        Path p = Path.of(outputPath);
+        Files.writeString(p, out);
+        System.out.println(objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(Map.of(
+                "failed", failed,
+                "output", p.toAbsolutePath()
+        )));
     }
 
     @SneakyThrows

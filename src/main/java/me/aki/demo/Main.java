@@ -1,12 +1,18 @@
 package me.aki.demo;
 
 import cn.hutool.core.lang.Assert;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Options;
 
+import java.util.Map;
+
 public class Main {
-    public static void main(String[] args) {
+    private final static ObjectMapper objectMapper = new ObjectMapper();
+
+    public static void main(String[] args) throws JsonProcessingException {
 
         Options options = new Options().addOption("i", "input", true, "输入路径")
                 .addOption("o", "output", true, "输出路径")
@@ -19,12 +25,12 @@ public class Main {
                 .addOption("dry", "dry", false, "使用假数据替代");
         try {
             CommandLine cmd = new DefaultParser().parse(options, args);
-            App app = new App();
+            App app = new App(objectMapper);
             String input = cmd.getOptionValue("i");
             String output = cmd.getOptionValue("o");
             String jsonPath = cmd.getOptionValue("j");
             Assert.notBlank(input, "输入路径不可为空");
-            Assert.notBlank(output, "输出路径不可为空");
+//            Assert.notBlank(output, "输出路径不可为空");
             switch (getMode(cmd)) {
                 case "r" -> app.readToJson(input, output);
                 case "w" -> {
@@ -35,7 +41,9 @@ public class Main {
                 default -> throw new IllegalArgumentException("未指定模式 r w a");
             }
         } catch (Exception e) {
-            System.err.println("出错: " + e.getMessage());
+            System.out.println(objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(
+                    Map.of("err", e.toString())
+            ));
         }
     }
 

@@ -14,7 +14,7 @@ public class Writer {
             List<String> content = textBlock.generateContent();
             int realIndexStart = textBlock.getLineStart() + offset - 1;
             int realIndexStop = textBlock.getLineStop() + offset - 1;
-            System.out.printf("%05d - %05d off: %d\n", realIndexStart, realIndexStop, offset);
+//            System.out.printf("%05d - %05d off: %d\n", realIndexStart, realIndexStop, offset);
             int origLen = realIndexStop - realIndexStart + 1;
             int actualLen = content.size();
             int lenDiff = actualLen - origLen;
@@ -31,7 +31,8 @@ public class Writer {
             if (lenDiff < 0) {
                 int removeStartIndex = realIndexStart + content.size();
                 for (int i = removeStartIndex; i < realIndexStop + 1; i++) {
-                    System.out.println(allLines.remove(removeStartIndex));
+                    String rm = allLines.remove(removeStartIndex);
+//                    System.out.println(rm);
                 }
             }
         }
