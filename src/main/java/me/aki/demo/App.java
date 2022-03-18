@@ -37,7 +37,7 @@ public class App {
     public void writeFromJson(String jsonPath, String inputPath, String outputPath) throws IOException {
         List<TextBlock> textBlocks = new ObjectMapper().readValue(Files.newInputStream(Path.of(jsonPath)), new TypeReference<>() {
         });
-        if (StrUtil.isBlank(outputPath) || !outputPath.endsWith(".json")) {
+        if (StrUtil.isBlank(outputPath) || !outputPath.endsWith(".ks")) {
             outputPath = "out.ks";
         }
         String out = new Writer().write(textBlocks, Path.of(inputPath));
@@ -51,18 +51,7 @@ public class App {
     public void readTranslateAndWrite(String inputPath, String outputPath, boolean dryRun) throws IOException, ExecutionException, InterruptedException {
         Path origFilePath = Path.of(inputPath);
         List<TextBlock> textBlocks = new Reader().read(origFilePath);
-        CopyOnWriteArrayList<TextBlock> failed = new CopyOnWriteArrayList<>();
-        ExecutorService executor = Executors.newFixedThreadPool(100);
-        //noinspection rawtypes,Convert2MethodRef
-        CompletableFuture[] cfs = textBlocks.stream().map(tb -> CompletableFuture.runAsync(() -> {
-            translate(tb, dryRun);
-//            System.out.printf("line %d - %d 完成\n", tb.getLineStart(), tb.getLineStop());
-        }, executor).exceptionally(e -> {
-//            System.err.printf("line %d - %d 失败\n", tb.getLineStart(), tb.getLineStop());
-            failed.add(tb);
-            return null;
-        })).toArray(i -> new CompletableFuture[i]);
-        CompletableFuture.allOf(cfs).get();
+        List<TextBlock> failed = translateBlocks(textBlocks, dryRun);
         String out = new Writer().write(textBlocks, origFilePath);
         Path p = Path.of(outputPath);
         Files.writeString(p, out);
@@ -70,6 +59,22 @@ public class App {
                 "failed", failed,
                 "output", p.toAbsolutePath()
         )));
+    }
+
+    public void translateJson(String jsonPath, String outputPath, boolean dryRun) throws IOException, ExecutionException, InterruptedException {
+        List<TextBlock> textBlocks = new ObjectMapper().readValue(Files.newInputStream(Path.of(jsonPath)), new TypeReference<>() {
+        });
+        if (StrUtil.isBlank(outputPath) || !outputPath.endsWith(".json")) {
+            outputPath = "out.json";
+        }
+        List<TextBlock> failed = translateBlocks(textBlocks, dryRun);
+        Path p = Path.of(outputPath);
+        Files.writeString(p, objectMapper.writeValueAsString(textBlocks));
+        System.out.println(objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(Map.of(
+                "failed", failed,
+                "output", p.toAbsolutePath()
+        )));
+
     }
 
     @SneakyThrows
@@ -98,5 +103,21 @@ public class App {
             textContents.add(textContent);
             return textContent;
         });
+    }
+
+    private List<TextBlock> translateBlocks(List<TextBlock> textBlocks, boolean dryRun) throws ExecutionException, InterruptedException {
+        CopyOnWriteArrayList<TextBlock> failed = new CopyOnWriteArrayList<>();
+        ExecutorService executor = Executors.newFixedThreadPool(100);
+        //noinspection rawtypes,Convert2MethodRef
+        CompletableFuture[] cfs = textBlocks.stream().map(tb -> CompletableFuture.runAsync(() -> {
+            translate(tb, dryRun);
+//            System.out.printf("line %d - %d 完成\n", tb.getLineStart(), tb.getLineStop());
+        }, executor).exceptionally(e -> {
+//            System.err.printf("line %d - %d 失败\n", tb.getLineStart(), tb.getLineStop());
+            failed.add(tb);
+            return null;
+        })).toArray(i -> new CompletableFuture[i]);
+        CompletableFuture.allOf(cfs).get();
+        return failed;
     }
 }
